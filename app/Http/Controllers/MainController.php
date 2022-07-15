@@ -14,36 +14,36 @@ class MainController extends BaseController
 
     public function __construct()
     {
-        $this->baseURL = config('app.url');
+        $this->baseURL = env('APP_URL');
     }
 
     public function getAppClientId() {
-        if (app()->environment('local')) {
-            return config('bigcommerce.bc_local_client_id');
+        if (env('APP_ENV') === 'local') {
+            return env('BC_LOCAL_CLIENT_ID');
         } else {
-            return config('bigcommerce.bc_app_client_id');
+            return env('BC_APP_CLIENT_ID');
         }
     }
 
     public function getAppSecret(Request $request) {
-        if (app()->environment('local')) {
-            return config('bigcommerce.bc_local_secret');
+        if (env('APP_ENV') === 'local') {
+            return env('BC_LOCAL_SECRET');
         } else {
-            return config('bigcommerce.bc_app_secret');
+            return env('BC_APP_SECRET');
         }
     }
 
     public function getAccessToken(Request $request) {
-        if (app()->environment('local')) {
-            return config('bigcommerce.bc_local_access_token');
+        if (env('APP_ENV') === 'local') {
+            return env('BC_LOCAL_ACCESS_TOKEN');
         } else {
             return $request->session()->get('access_token');
         }
     }
 
     public function getStoreHash(Request $request) {
-        if (app()->environment('local')) {
-            return config('bigcommerce.bc_local_store_hash');
+        if (env('APP_ENV') === 'local') {
+            return env('BC_LOCAL_STORE_HASH');
         } else {
             return $request->session()->get('store_hash');
         }
@@ -53,7 +53,7 @@ class MainController extends BaseController
     {
         // Make sure all required query params have been passed
         if (!$request->has('code') || !$request->has('scope') || !$request->has('context')) {
-            return redirect('error')->with('error_message', 'Not enough information was passed to install this app.');
+            return redirect()->action('MainController@error')->with('error_message', 'Not enough information was passed to install this app.');
         }
 
         try {
@@ -102,7 +102,7 @@ class MainController extends BaseController
             if ($request->has('external_install')) {
                 return redirect('https://login.bigcommerce.com/app/' . $this->getAppClientId() . '/install/failed');
             } else {
-                return redirect('error')->with('error_message', $errorMessage);
+                return redirect()->action('MainController@error')->with('error_message', $errorMessage);
             }
         }
     }
@@ -119,13 +119,24 @@ class MainController extends BaseController
                 $request->session()->put('owner_email', $verifiedSignedRequestData['owner']['email']);
                 $request->session()->put('store_hash', $verifiedSignedRequestData['context']);
             } else {
-                return redirect('error')->with('error_message', 'The signed request from BigCommerce could not be validated.');
+                return redirect()->action('MainController@error')->with('error_message', 'The signed request from BigCommerce could not be validated.');
             }
         } else {
-            return redirect('error')->with('error_message', 'The signed request from BigCommerce was empty.');
+            return redirect()->action('MainController@error')->with('error_message', 'The signed request from BigCommerce was empty.');
         }
 
         return redirect('/');
+    }
+
+    public function error(Request $request)
+    {
+        $errorMessage = "Internal Application Error";
+
+        if ($request->session()->has('error_message')) {
+            $errorMessage = $request->session()->get('error_message');
+        }
+
+        echo '<h4>An issue has occurred:</h4> <p>' . $errorMessage . '</p> <a href="'.$this->baseURL.'">Go back to home</a>';
     }
 
     private function verifySignedRequest($signedRequest, $appRequest)
